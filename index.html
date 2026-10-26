@@ -1,0 +1,1074 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ANTTI'S BRAIN — PORTALS · worlds inside the moons</title>
+<style>
+  :root{
+    --void:#04060b; --ink:#c9d4e0; --amber:#e8b13a; --amber-dim:#8a6d2c;
+    --cyan:#54d2e2; --line:#1b2436; --dim:#67788d; --green:#4ec98f; --red:#e06060;
+    --gold:#ffd76a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--void);overflow:hidden;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--ink)}
+  #gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab}
+  #gl.drag{cursor:grabbing}
+  .panel{position:fixed;background:rgba(6,9,16,.74);border:1px solid var(--line);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  #hud{top:14px;left:14px;padding:12px 14px;min-width:280px;max-width:360px;font-size:11px;line-height:1.7}
+  #hud .ttl{color:var(--amber);letter-spacing:.16em;font-size:10px;
+    text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;gap:18px}
+  #hud .ttl b{color:var(--amber-dim);font-weight:400}
+  #hud .row{display:flex;justify-content:space-between;color:#8494a8;gap:14px}
+  #hud .row span{color:var(--ink);text-align:right}
+  #hud .row .k{color:var(--dim);text-align:left}
+  #hud .row .room{color:var(--cyan);letter-spacing:.08em}
+  #hud .row .lvl{color:var(--gold);letter-spacing:.12em}
+  #hud .path{color:var(--gold);font-size:10px;letter-spacing:.06em;margin:2px 0 4px;word-break:break-word}
+  #hud .note{margin-top:7px;border-top:1px solid var(--line);padding-top:6px;
+    color:var(--dim);font-size:10px;line-height:1.6;max-width:330px}
+  #ctl{bottom:14px;left:14px;padding:12px 14px;width:288px;font-size:11px}
+  #ctl h2{margin:0 0 9px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--cyan);font-weight:600}
+  .field{margin:8px 0}
+  .field label{display:flex;justify-content:space-between;color:#8494a8;margin-bottom:4px}
+  .field label var{color:var(--ink);font-style:normal}
+  input[type=range]{width:100%;height:2px;-webkit-appearance:none;appearance:none;
+    background:var(--line);outline:none;margin:6px 0}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+    border-radius:50%;background:var(--amber);cursor:pointer;border:2px solid var(--void)}
+  input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;
+    background:var(--amber);cursor:pointer;border:2px solid var(--void)}
+  .btns{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  button{flex:1;min-width:56px;padding:7px 4px;background:transparent;color:var(--ink);
+    border:1px solid var(--line);font:inherit;font-size:10px;letter-spacing:.05em;
+    cursor:pointer;transition:.15s;text-transform:uppercase}
+  button:hover{border-color:var(--amber-dim);color:var(--amber)}
+  button.on{border-color:var(--cyan);color:var(--cyan)}
+  button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  #stat{margin-top:7px;font-size:10px;color:var(--dim);min-height:13px;word-break:break-all}
+  #help{bottom:14px;right:14px;padding:11px 13px;font-size:10.5px;line-height:1.85;
+    color:#73859a;text-align:right}
+  #help b{color:var(--amber)}
+  #banner{position:fixed;top:38%;left:0;right:0;text-align:center;pointer-events:none;
+    opacity:0;transition:opacity .5s;z-index:8}
+  #banner .b1{font-size:22px;letter-spacing:.4em;color:var(--gold);text-transform:uppercase;
+    text-shadow:0 0 24px rgba(255,215,106,.55)}
+  #banner .b2{font-size:11px;color:var(--dim);margin-top:8px;letter-spacing:.14em}
+  #banner.show{opacity:1}
+  #boot{position:fixed;inset:0;display:flex;flex-direction:column;gap:10px;
+    align-items:center;justify-content:center;background:rgba(4,6,11,.92);z-index:9;
+    transition:opacity .8s;text-align:center;padding:20px}
+  #boot.gone{opacity:0;pointer-events:none}
+  #boot .big{font-size:15px;letter-spacing:.28em;color:var(--amber)}
+  #boot .sub{font-size:11px;color:var(--dim);line-height:1.9;max-width:560px}
+  #boot .sub em{color:var(--gold);font-style:normal}
+  #bootStat{font-size:11px;color:var(--cyan);letter-spacing:.12em;min-height:14px}
+  #boot.err .big{color:var(--red)}
+  #boot.err .sub{color:#c99;word-break:break-all;text-align:left}
+</style>
+
+<canvas id="gl"></canvas>
+
+<div id="boot">
+  <div class="big">ANTTI'S BRAIN — PORTALS</div>
+  <div class="sub">every chamber holds one <em>portal moon</em>. look into it and you see another brain —<br>
+  a different seed, its own rooms, its own light, its own weather.<br>
+  fly into the sphere and you are there. the sphere you arrive in leads back home:<br>
+  turn around and your own camera is shining through a hole in a foreign world.<br>
+  <em>every world deeper sees your camera further in the past</em> — home is live,<br>
+  one world in is four seconds ago. wave at a portal and watch the wave travel.<br><br>
+  nothing is stored. every world is a pure function of the seed that made it,<br>
+  and every portal's world is a hash of the world it sits in. the multiverse is one number.<br><br>
+  click / drag to enter · mouse look is inverted, as before.</div>
+  <div id="bootStat">waking up…</div>
+</div>
+
+<div id="banner"><div class="b1" id="bn1"></div><div class="b2" id="bn2"></div></div>
+
+<div id="hud" class="panel">
+  <div class="ttl">Brain — Portals <b id="fps">— fps</b></div>
+  <div class="row"><span class="k">world</span><span class="lvl" id="worldV">HOME</span></div>
+  <div class="row"><span class="k">look</span><span id="lookV">your camera</span></div>
+  <div class="row"><span class="k">worlds deep</span><span id="depthV">0</span></div>
+  <div class="row"><span class="k">this world sees</span><span id="timeV">you, live</span></div>
+  <div class="path" id="pathV">HOME</div>
+  <div class="row"><span class="k">chamber</span><span class="room" id="roomV">—</span></div>
+  <div class="row"><span class="k">index / shape</span><span id="roomI">—</span></div>
+  <div class="row"><span class="k">portal leads to</span><span id="doorV">—</span></div>
+  <div class="row"><span class="k">way back</span><span id="backV">—</span></div>
+  <div class="row"><span class="k">boundary</span><span id="src">—</span></div>
+  <div class="row"><span class="k">music</span><span id="musV">—</span></div>
+  <div class="row"><span class="k">position</span><span id="pos">—</span></div>
+  <div class="note" id="note">the walls are your camera; the moons are curved mirrors. the haloed sphere is not a moon — it is a hole into another brain.</div>
+</div>
+
+<div id="ctl" class="panel">
+  <h2>The multiverse</h2>
+  <div class="field"><label>Mass gain <var id="m_l">1.0</var></label>
+    <input id="m" type="range" min="0.2" max="2.2" step="0.05" value="1.0"></div>
+  <div class="field"><label>Lensing <var id="g_l">1.0</var></label>
+    <input id="g" type="range" min="0" max="3" step="0.05" value="1.0"></div>
+  <div class="field"><label>Music volume <var id="v_l">0.5</var></label>
+    <input id="v" type="range" min="0" max="1" step="0.05" value="0.5"></div>
+  <div class="btns">
+    <button id="bHome">Home</button>
+    <button id="bSeed">New multiverse</button>
+  </div>
+  <div class="btns">
+    <button id="bMus" class="on">Music: on</button>
+    <button id="bSrc">Test pattern</button>
+    <button id="bIdle" class="on">Idle spin: on</button>
+  </div>
+  <div id="stat"></div>
+</div>
+
+<div id="help" class="panel">
+  <b>W A S D</b> move · <b>Q E</b> down/up<br>
+  drag to look (inverted) · <b>shift</b> boost<br>
+  haloed sphere = a portal · fly into it to cross<br>
+  deeper worlds see you further in the past<br>
+  the sphere you arrive in leads back
+</div>
+
+<video id="vid" style="display:none" playsinline muted></video>
+
+<script>
+'use strict';
+/* Do not hype. Do not lie. Just show. */
+const $=id=>document.getElementById(id);
+const cvs=$('gl'), boot=$('boot');
+
+function bootErr(t){
+  if(window.dreamTick){clearInterval(window.dreamTick);window.dreamTick=null;}
+  boot.classList.add('err');boot.classList.remove('gone');
+  boot.innerHTML='<div class="big">It broke — here is why</div><div class="sub">'
+    +String(t).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])).slice(0,900)+'</div>';
+}
+window.onerror=(m,s,l,c,e)=>{bootErr((e&&e.stack)||m+' @ line '+l);};
+window.addEventListener('unhandledrejection',e=>bootErr(e.reason));
+
+let gl=cvs.getContext('webgl2',{antialias:false,powerPreference:'high-performance',preserveDrawingBuffer:true});
+if(!gl)gl=cvs.getContext('webgl2');
+if(!gl){bootErr('No WebGL2 — this brain needs a WebGL2 browser.');throw new Error('no webgl2');}
+
+const MAXW=20;     /* moons: 12 in the world you are in, 4 + 4 in the worlds behind the portals */
+const PR=1.8;      /* portal radius — the door and the return sphere must be the same size */
+
+const VERT=`#version 300 es
+void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.0-1.0,0.0,1.0);}`;
+
+/* =====================================================================
+   THREE WORLDS LIVE IN ONE SHADER
+     slot 0 — the brain you stand in
+     slot 1 — the brain behind this room's portal moon
+     slot 2 — the brain you came from (behind the return sphere)
+   Each slot has its own coordinate frame. A ray carries a slot index;
+   evaluating the world costs the same no matter how many slots exist,
+   because only the ray's own slot is marched.
+   A portal is a sphere pair (A in one slot, B in another, same radius).
+   A ray entering A is translated to the same spot on B and keeps going
+   in B's world. The pair partner is ignored until the ray has passed
+   out of it — that is the whole trick, and it makes portals two-way
+   and recursive for free.
+   ===================================================================== */
+const FRAG=`#version 300 es
+precision highp float;
+out vec4 O;
+uniform vec2 iRes;
+uniform float iTime;
+uniform vec3 camP,camR,camU,camF;
+uniform int marchN,escN,camSkip;
+uniform vec4 wells[${MAXW}];     /* xyz pos · w size */
+uniform vec3 wellCol[${MAXW}];
+uniform vec4 wellPar[${MAXW}];   /* x spin-xz · y spin-xy · z global room index */
+uniform ivec2 slotW[3];          /* moon range of each slot */
+uniform vec4 slotPal[3];         /* x hue · y recolour · z pattern freq · w style */
+uniform vec4 slotFog[3];         /* rgb · density */
+uniform vec3 roomPos[9];
+uniform vec4 roomPar[9];         /* x size · y p-xz · z p-vert · w squash */
+uniform vec4 roomMod[9];         /* x twist · y breath amp · z breath freq · w mass */
+uniform vec4 roomShp[9];         /* x ripple amp · y lobes · z ring blend */
+uniform vec3 roomTintU[9];
+uniform vec4 pC[4];              /* portal centre · radius */
+uniform vec4 pX[4];              /* exit centre (in the other slot) · hue of the world behind */
+uniform vec4 pI[4];              /* from slot · to slot · pair index · active */
+uniform float mGain,lensK;
+uniform sampler2D camTex;
+uniform highp sampler2DArray camArr;   /* the last ~12 s of your camera */
+uniform float slotLayer[3];             /* <0: live · else: which past frame this world sees */
+
+vec2 rot2(vec2 v,float a){float c=cos(a),s=sin(a);return vec2(c*v.x-s*v.y,s*v.x+c*v.y);}
+float sdSeg(vec3 p,vec3 a,vec3 b){vec3 pa=p-a,ba=b-a;
+  float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0);return length(pa-ba*h);}
+vec3 pal(float t){return 0.5+0.5*cos(6.28318*(t+vec3(0.0,0.33,0.67)));}
+
+/* THE ONE SHAPE — unchanged from Descent */
+float shapeSD(vec3 q,float s,float px,float pv,float hy,
+              float aa,float an,float tw){
+  float cx=pow(pow(abs(q.x)+1e-5,px)+pow(abs(q.z)+1e-5,px),1.0/px);
+  float lp=pow(pow(cx,pv)+pow(abs(q.y/hy)+1e-5,pv),1.0/pv);
+  float d=(lp-s)*min(hy,1.0);
+  if(tw>0.001){
+    float dR=length(vec2(length(q.xz)-s*0.72,q.y))-s*0.42;
+    d=mix(d,dR,tw);
+  }
+  if(aa>0.001){
+    float rr=length(q.xz);
+    float w=clamp(rr/(0.35*s),0.0,1.0);
+    d-=s*aa*w*cos(an*atan(q.z,q.x+1e-6));
+  }
+  return d/(1.0+aa*(an+1.0)*2.9);
+}
+float roomSD(vec3 p,int r){
+  vec3 q=p-roomPos[r];
+  float tw=roomMod[r].x;
+  if(abs(tw)>0.0005) q.xz=rot2(q.xz,q.y*tw);
+  float d=shapeSD(q,roomPar[r].x,roomPar[r].y,roomPar[r].z,roomPar[r].w,
+                  roomShp[r].x,roomShp[r].y,roomShp[r].z);
+  float ra=roomMod[r].y;
+  if(ra>0.001) d+=ra*sin(q.x*roomMod[r].z)*sin(q.y*roomMod[r].z)*sin(q.z*roomMod[r].z);
+  return d/(1.0+abs(tw)*roomPar[r].x*0.6+ra*roomMod[r].z);
+}
+float worldSD(vec3 p,int s){
+  int b=s*3;
+  float d=min(roomSD(p,b),min(roomSD(p,b+1),roomSD(p,b+2)));
+  d=min(d,sdSeg(p,roomPos[b],roomPos[b+1])-1.7);
+  d=min(d,sdSeg(p,roomPos[b+1],roomPos[b+2])-1.7);
+  return d;}
+int nearestRoom(vec3 p,int s){
+  int b=s*3;
+  float d0=roomSD(p,b),d1=roomSD(p,b+1),d2=roomSD(p,b+2);
+  return b+(d0<d1?(d0<d2?0:2):(d1<d2?1:2));}
+vec3 wallNormal(vec3 p,int s){ /* inward-facing */
+  const vec2 e=vec2(0.02,-0.02);
+  return -normalize(
+    e.xyy*worldSD(p+e.xyy,s)+e.yyx*worldSD(p+e.yyx,s)+
+    e.yxy*worldSD(p+e.yxy,s)+e.xxx*worldSD(p+e.xxx,s));}
+
+float moonSD(vec3 p,int k){
+  vec3 q=p-wells[k].xyz;
+  float s=wells[k].w;
+  float bs=length(q)-s*2.2;
+  if(bs>0.6) return bs;
+  q.xz=rot2(q.xz,wellPar[k].x);
+  q.xy=rot2(q.xy,wellPar[k].y);
+  int ri=int(wellPar[k].z+0.5);
+  return shapeSD(q,s*0.62,roomPar[ri].y,roomPar[ri].z,roomPar[ri].w,
+                 roomShp[ri].x,roomShp[ri].y,roomShp[ri].z)-s*0.10;
+}
+vec3 moonNormal(vec3 p,int k){
+  const vec2 e=vec2(0.012,-0.012);
+  return normalize(
+    e.xyy*moonSD(p+e.xyy,k)+e.yyx*moonSD(p+e.yyx,k)+
+    e.yxy*moonSD(p+e.yxy,k)+e.xxx*moonSD(p+e.xxx,k));}
+
+vec3 eqSample(vec3 n,int s){
+  float u=0.5+atan(n.z,n.x)*0.159155;
+  float v=0.5-asin(clamp(n.y,-1.0,1.0))*0.318310;
+  vec2 q=vec2(1.0-u,v);
+  if(slotLayer[s]<0.0) return texture(camTex,q).rgb;
+  return texture(camArr,vec3(q,slotLayer[s])).rgb;}
+vec3 wallImg(vec3 p,int s){
+  int r=nearestRoom(p,s);
+  return eqSample(normalize(p-roomPos[r]),s)*roomTintU[r];}
+float lightL(vec3 x,int s){
+  float L=0.0;
+  for(int k=slotW[s].x;k<slotW[s].y;k++) L+=wells[k].w*mGain/(length(x-wells[k].xyz)+1.0);
+  return L;}
+/* a foreign world sees your camera through its own palette */
+vec3 recolour(vec3 c,int s){
+  float l=dot(c,vec3(0.299,0.587,0.114));
+  vec3 g=pal(slotPal[s].x+l*0.45)*(0.25+1.5*l);
+  return mix(c,g,slotPal[s].y);}
+/* DREAM STONE: a world with no camera at all — the moons are its only suns */
+vec3 dreamWall(vec3 x,int s){
+  vec3 n=wallNormal(x,s);
+  float fq=slotPal[s].z;
+  float a=sin(x.x*fq+2.0*sin(x.y*fq*0.7+x.z*fq*0.4));
+  float b=sin(x.z*fq*0.9+1.7*sin(x.x*fq*0.5-x.y*fq*0.3));
+  float pt=0.5+0.5*a*b;
+  pt=0.75*pt+0.25*(0.5+0.5*sin(dot(x,vec3(3.1,2.3,2.7))*fq*2.3));
+  vec3 alb=0.15+0.85*pal(slotPal[s].x+pt*0.38);
+  vec3 li=slotFog[s].rgb*0.30+vec3(0.04);
+  li+=vec3(1.0,0.95,0.85)*0.30*max(n.y,0.0);
+  for(int k=slotW[s].x;k<slotW[s].y;k++){
+    vec3 lv=wells[k].xyz-x; float r=length(lv);
+    li+=wellCol[k]*wells[k].w*mGain*2.6/(1.0+0.035*r*r)*max(dot(n,lv/r),0.0);
+  }
+  float vein=smoothstep(0.86,1.0,pt);
+  return alb*li+pal(slotPal[s].x+0.5)*vein*0.3;
+}
+
+void main(){
+  vec2 uv0=(gl_FragCoord.xy-0.5*iRes)/iRes.y;
+  vec3 x=camP;
+  vec3 rd=normalize(uv0.x*camR+uv0.y*camU+1.5*camF);
+  vec3 glow=vec3(0.0), tint=vec3(1.0), col=vec3(0.0), fogAdd=vec3(0.0);
+  float trans=1.0, seg=0.0, stp=0.05;
+  int S=0, skip=camSkip, nP=0, bnc=0;
+  bool done=false;
+
+  for(int i=0;i<marchN;i++){
+    int w0=slotW[S].x, w1=slotW[S].y;
+    if(lensK>0.001){
+      vec3 pull=vec3(0.0);
+      for(int k=w0;k<w1;k++){
+        vec3 dv=wells[k].xyz-x; float r2=dot(dv,dv)+0.4;
+        pull+=dv*inversesqrt(r2)*(wells[k].w*mGain/r2); }
+      for(int j=0;j<4;j++){               /* portals have mass too: their rims lens */
+        if(pI[j].w<0.5||int(pI[j].x+0.5)!=S||j==skip) continue;
+        vec3 dv=pC[j].xyz-x; float r2=dot(dv,dv)+0.4;
+        pull+=dv*inversesqrt(r2)*(0.9*mGain/r2); }
+      rd=normalize(rd+pull*stp*0.055*lensK);
+    }
+    float dm=1e9; int hb=-1;
+    for(int k=w0;k<w1;k++){
+      float sd=moonSD(x,k);
+      float r=length(x-wells[k].xyz);
+      float e=wells[k].w*mGain/(r+1.0);
+      glow+=tint*wellCol[k]*e*e*0.03*stp;
+      if(sd<dm){dm=sd;hb=k;} }
+
+    float dp=1e9; int hp=-1;
+    for(int j=0;j<4;j++){
+      if(pI[j].w<0.5||int(pI[j].x+0.5)!=S) continue;
+      float d=length(x-pC[j].xyz)-pC[j].w;
+      if(j==skip){ if(d>0.06) skip=-1; else continue; }   /* still passing out of the partner */
+      glow+=tint*pal(pX[j].w)*(0.0022*stp/(d*d+0.05))*smoothstep(1.6,0.0,d);  /* thin halo, outside only */
+      if(d<dp){dp=d;hp=j;}
+    }
+
+    /* ---- CROSSING: the ray changes universe ---- */
+    if(hp>=0 && dp<0.03){
+      if(nP>=6){ col=slotFog[S].rgb*tint; done=true; break; }
+      vec3 n=normalize(x-pC[hp].xyz);
+      float rim=pow(1.0-abs(dot(rd,n)),6.0);
+      glow+=tint*pal(pX[hp].w)*rim*0.35;                  /* thin bright rim, like a soap film */
+      float f=exp(-seg*slotFog[S].w);                      /* this world's air, up to the portal */
+      fogAdd+=trans*(1.0-f)*slotFog[S].rgb*tint; trans*=f; seg=0.0;
+      rd=normalize(rd+n*0.045*sin(iTime*1.6+dot(n,vec3(9.0,7.0,5.0))*2.0)); /* the surface ripples */
+      x=x-pC[hp].xyz+pX[hp].xyz;
+      skip=int(pI[hp].z+0.5);
+      S=int(pI[hp].y+0.5);
+      nP++; tint*=0.96; x+=rd*0.01; stp=0.03;
+      continue;
+    }
+
+    float dw=-worldSD(x,S);
+    int st=int(slotPal[S].w+0.5);
+    if(dm<0.03 && hb>=0){
+      vec3 n=moonNormal(x,hb);
+      vec3 radial=normalize(x-wells[hb].xyz);
+      vec3 opticN=normalize(mix(n,radial,0.75));
+      if(dot(-rd,opticN)<=0.0) opticN=n;
+      if(st>=1){                     /* DREAM STONE & MIRROR HALL: the moons carry your past */
+        col=tint*recolour(eqSample(radial,S),S)*(0.55+0.7*min(lightL(x,S),1.4)); done=true; break;
+      }
+      rd=reflect(rd,opticN); tint*=0.82; bnc++;
+      if(bnc>5){ col=slotFog[S].rgb*tint; done=true; break; }
+      for(int j=0;j<escN;j++){ if(moonSD(x,hb)>0.05)break; x+=n*0.05; }
+      x+=rd*0.04; seg+=0.08; stp=0.05; continue;
+    }
+    if(dw<0.03){
+      if(st==2){                     /* MIRROR HALL: walls reflect */
+        vec3 n=wallNormal(x,S);
+        rd=reflect(rd,n); tint*=0.72*mix(vec3(1.0),pal(slotPal[S].x),0.35); bnc++;
+        if(bnc>5){ col=slotFog[S].rgb*tint; done=true; break; }
+        for(int j=0;j<escN;j++){ if(-worldSD(x,S)>0.05)break; x+=n*0.05; }
+        x+=rd*0.04; stp=0.05; continue;
+      }
+      if(st==1){ col=tint*dreamWall(x,S); done=true; break; }
+      col=tint*recolour(wallImg(x,S),S)*(0.30+1.1*min(lightL(x,S),1.6)); done=true; break;
+    }
+    stp=clamp(min(min(dm,dw),dp)*0.9,0.03,3.0);
+    x+=rd*stp; seg+=stp;
+    if(seg>260.0)break;
+  }
+  if(!done) col=slotFog[S].rgb*tint;
+  float f=exp(-seg*slotFog[S].w);
+  fogAdd+=trans*(1.0-f)*slotFog[S].rgb*tint; trans*=f;
+  col=fogAdd+trans*col+glow;
+  col=col/(col+1.0);
+  col=pow(col,vec3(0.4545));
+  float vig=1.0-0.35*dot(uv0,uv0);
+  O=vec4(col*vig,1.0);
+}`;
+
+/* ---------------- boundary texture (webcam + fallback) ---------------- */
+const vid=$('vid');
+let camOK=false, useCam=true;
+const camTex=gl.createTexture();
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D,camTex);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+
+if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+  navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}})
+    .then(st=>{vid.srcObject=st;vid.play();camOK=true;setSrcLabel();})
+    .catch(()=>{useCam=false;camOK=false;setSrcLabel();});
+}else{useCam=false;setSrcLabel();}
+
+const pat=document.createElement('canvas');pat.width=256;pat.height=256;
+const pctx=pat.getContext('2d');
+function drawPattern(t){
+  const g=pctx.createLinearGradient(0,0,0,256);
+  g.addColorStop(0,'#2a3550');g.addColorStop(1,'#6a4a70');
+  pctx.fillStyle=g;pctx.fillRect(0,0,256,256);
+  const cx=128+64*Math.cos(0.6*t),cy=128+48*Math.sin(0.9*t);
+  for(let s=0;s<24;s++){
+    pctx.fillStyle=s%2?'#d8c890':'#705838';
+    pctx.beginPath();pctx.arc(cx,cy,46-s*1.9,0,7);pctx.fill();
+  }
+  pctx.fillStyle='#101018';pctx.fillRect(176,56,40,40);
+  pctx.fillStyle='#c9d4e0';pctx.font='14px monospace';
+  pctx.fillText('no camera — pattern',56,240);
+}
+/* ---------------- THE PAST: a ring of camera frames, one every 0.2 s ---------------- */
+const RING=64, RING_DT=0.2, RW=256, RH=192, DELAY_PER_WORLD=4.0;
+const camArr=gl.createTexture();
+gl.activeTexture(gl.TEXTURE1);
+gl.bindTexture(gl.TEXTURE_2D_ARRAY,camArr);
+gl.texStorage3D(gl.TEXTURE_2D_ARRAY,1,gl.RGBA8,RW,RH,RING);
+gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_WRAP_S,gl.REPEAT);
+gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+gl.activeTexture(gl.TEXTURE0);
+const small=document.createElement('canvas');small.width=RW;small.height=RH;
+const sctx=small.getContext('2d');
+let ringHead=-1, ringCount=0, ringClock=0;
+function boundarySource(){
+  if(window.__fakeCam&&window.__fakeCam.complete)return window.__fakeCam;
+  if(useCam&&camOK&&vid.readyState>=2)return vid;
+  return pat;
+}
+function recordPast(dtReal){
+  ringClock+=dtReal;
+  if(ringHead>=0&&ringClock<RING_DT)return;
+  ringClock=0;
+  ringHead=(ringHead+1)%RING; ringCount=Math.min(ringCount+1,RING);
+  sctx.setTransform(1,0,0,-1,0,RH);          /* flip here, so the upload matches the live texture */
+  sctx.drawImage(boundarySource(),0,0,RW,RH);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY,camArr);
+  gl.texSubImage3D(gl.TEXTURE_2D_ARRAY,0,0,0,ringHead,RW,RH,1,gl.RGBA,gl.UNSIGNED_BYTE,small);
+  gl.activeTexture(gl.TEXTURE0);
+}
+/* which past frame a world `depth` portals from home sees (-1 = live) */
+function layerFor(depth){
+  if(depth<=0||ringHead<0)return -1;
+  const back=Math.min(Math.round(depth*DELAY_PER_WORLD/RING_DT),ringCount-1);
+  return ((ringHead-back)%RING+RING)%RING;
+}
+function secondsFor(depth){
+  if(depth<=0)return 0;
+  return Math.min(Math.round(depth*DELAY_PER_WORLD/RING_DT),Math.max(ringCount-1,0))*RING_DT;
+}
+function setSrcLabel(){
+  $('src').textContent=useCam&&camOK?'webcam live':'test pattern';
+  $('bSrc').textContent=useCam?'Test pattern':'Use camera';
+}
+function uploadBoundary(t,dtReal){
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D,camTex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+  const src=boundarySource();
+  if(src===pat)drawPattern(t);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+  recordPast(dtReal||0);
+}
+
+/* =====================================================================
+   THE PROCEDURAL MULTIVERSE
+   A world is a SEED. Every chamber is a pure function of (seed, index),
+   exactly as in Descent. The portal in chamber i of world s leads to
+   world childSeed(s,i), arriving at its chamber 0 (the arrival hall).
+   The way back is a stack of (seed, chamber). Nothing else is stored.
+   ===================================================================== */
+let ROOT=(Math.random()*4294967296)>>>0;
+let SEED=ROOT;
+function rng(i,salt){
+  let t=(SEED ^ Math.imul(i|0,2654435761) ^ Math.imul(salt|0,40503))>>>0;
+  t=Math.imul(t^(t>>>15),t|1);
+  t^=t+Math.imul(t^(t>>>7),t|61);
+  return ((t^(t>>>14))>>>0)/4294967296;
+}
+function withSeed(s,fn){const o=SEED;SEED=s;try{return fn();}finally{SEED=o;}}
+function hash32(a,b){
+  let t=(Math.imul((a^0x9E3779B9)>>>0,0x85EBCA6B)^Math.imul((b+0x632BE5AB)>>>0,0xC2B2AE35))>>>0;
+  t^=t>>>16; t=Math.imul(t,0x7FEB352D); t^=t>>>15; t=Math.imul(t,0x846CA68B); t^=t>>>16;
+  return t>>>0;
+}
+function childSeed(s,ci){return hash32(s,Math.imul(ci|0,7919)+17);}
+
+function shapeName(d){
+  if(d.tw>0.30)return 'RING';
+  if(d.aa>0.05)return (d.an>=8?'GEAR-':'STAR-')+d.an;
+  const bx=d.px>4.5, pr=d.pv>4.5;
+  if(bx&&pr)return 'CUBE';
+  if(!bx&&pr)return 'CYLINDER';
+  if(bx&&!pr)return 'CUSHION';
+  if(d.hy<0.62)return 'DOME';
+  return 'ORB';
+}
+const SYL=['KA','RA','JA','PIN','TA','VUO','LU','MI','SA','TÄH','TI','KI','VI','HEL','ME','NU','SO','LO'];
+
+function depthOf(L){return Math.min(3+L,10);}
+function levelOfRoom(i){
+  if(i<0)return 1;
+  let L=1,s=0;
+  while(s+depthOf(L)<=i){s+=depthOf(L);L++;}
+  return L;
+}
+function nMoonsOf(L){return Math.min(3+((L-1)>>1),5);}
+
+function roomDef(i){
+  const L=levelOfRoom(i);
+  const spread=Math.min(1.2+L*0.8,6.0);
+  const px=2.0+rng(i,1)*spread;
+  const pv=2.0+rng(i,4)*spread;
+  let size=7.0+rng(i,2)*4.0+Math.min(L*0.15,3.0);
+  let height=4.5+rng(i,3)*2.5;
+  let hy=Math.min(Math.max(height/size,0.45),1.0);
+  const an=4+Math.floor(rng(i,13)*9);
+  let aa=L>=2?rng(i,12)*rng(i,12)*Math.min(0.02+L*0.013,0.12):0.0;
+  aa=Math.min(aa,0.5/an);
+  let tw=L>=4?Math.pow(rng(i,14),1.5)*Math.min((L-3)*0.10,0.55):0.0;
+  const hue=rng(i,5);
+  const turn=(rng(i,6)-0.5)*2.4;
+  let twist=(rng(i,8)-0.5)*2.0*Math.min(0.015+L*0.011,0.13);
+  let ripA=Math.min(Math.max(L-2,0)*0.06,0.45)*rng(i,9);
+  const ripF=0.5+rng(i,10)*1.2;
+  if(i===0){            /* THE ARRIVAL HALL: big, calm, untwisted — room for two portals */
+    size=10.0+rng(i,2)*2.0; hy=0.78+rng(i,3)*0.2; height=hy*size;
+    tw=0; aa=0; twist=0; ripA=0;
+  }
+  const cDepth=()=>((-(size*hy)*(1-tw)+size*0.30*tw)
+        /(1.0+aa*(an+1.0)*2.9)
+        /(1.0+Math.abs(twist)*size*0.6+ripA*ripF));
+  for(let g=0;g<10 && cDepth()>-1.3;g++){
+    tw*=0.7; aa*=0.7;
+    if(g>2){twist*=0.75; ripA*=0.75;}
+  }
+  const massK=Math.min(0.7+rng(i,11)*0.9+L*0.04,2.8);
+  let name='';const nc=2+Math.floor(rng(i,7)*2);
+  for(let k=0;k<nc;k++)name+=SYL[Math.floor(rng(i,20+k)*SYL.length)];
+  const tint=[0.86+0.14*Math.cos(6.283*hue),
+              0.86+0.14*Math.cos(6.283*(hue+0.33)),
+              0.86+0.14*Math.cos(6.283*(hue+0.66))];
+  return {px,pv,hy,aa,an,tw,size,height,hue,turn,name,tint,twist,ripA,ripF,massK,level:L};
+}
+function moonDef(i,m){
+  const s=100+m*13;
+  const mass=-Math.log(1e-6+rng(i,s+1));
+  return {mass,
+    fx:0.05+rng(i,s+2)*0.20, fy:0.05+rng(i,s+3)*0.20, fz:0.05+rng(i,s+4)*0.20,
+    px:rng(i,s+5)*6.283, py:rng(i,s+6)*6.283, pz:rng(i,s+7)*6.283,
+    ax:0.28+rng(i,s+8)*0.22, ay:0.25+rng(i,s+9)*0.22, az:0.28+rng(i,s+10)*0.22,
+    ra:(rng(i,s+11)-0.5)*1.2, rb:(rng(i,s+12)-0.5)*1.2,
+    pa:rng(i,s+13)*6.283, pb:rng(i,s+14)*6.283,
+    hue:rng(i,s+15)};
+}
+
+/* ------- a world's LOOK is a pure function of its seed ------- */
+const STYLE_NAMES=['your camera','dream stone','mirror hall'];
+const lookCache=new Map();
+function lookOf(seed){
+  if(lookCache.has(seed))return lookCache.get(seed);
+  let lk;
+  if(seed===ROOT){
+    lk={style:0,rec:0,hue:0.58,fq:0,fog:[0.012,0.016,0.03],dens:0.004,fogHue:0.58,name:'HOME'};
+  }else lk=withSeed(seed,()=>{
+    const r=rng(0,401);
+    const style=r<0.55?1:(r<0.8?2:0);
+    const hue=rng(0,402), fogHue=hue+0.15+rng(0,403)*0.3;
+    const bright=rng(0,404)<0.55?0.45+0.4*rng(0,405):0.03+0.1*rng(0,405);
+    const fog=[0,0.33,0.67].map(o=>((0.5+0.5*Math.cos(6.283*(fogHue+o)))*0.9+0.1)*bright);
+    let name='';const nc=2+Math.floor(rng(0,409)*2);
+    for(let k=0;k<nc;k++)name+=SYL[Math.floor(rng(0,410+k)*SYL.length)];
+    return {style,rec:style===0?0.5:0.35,hue,fq:0.35+rng(0,406)*0.9,fog,
+            dens:(bright>0.3?0.004:0.008)+0.014*rng(0,407),fogHue,name};
+  });
+  lookCache.set(seed,lk);
+  return lk;
+}
+
+/* ------- chains: three rooms around a chamber, in that world's own frame ------- */
+function rotXZ(v,a){const c=Math.cos(a),s=Math.sin(a);return [c*v[0]-s*v[1],s*v[0]+c*v[1]];}
+function startDir(){return [Math.sin(rng(0,99)*6.283),Math.cos(rng(0,99)*6.283)];}
+function chainOf(ci,din){
+  const dPrev=roomDef(ci-1), dCur=roomDef(ci), dNext=roomDef(ci+1);
+  const dirOut=rotXZ(din,dCur.turn);
+  const Dn=dCur.size+dNext.size+12.0, Dp=dPrev.size+dCur.size+12.0;
+  return {idx:[ci-1,ci,ci+1], def:[dPrev,dCur,dNext],
+    pos:[[-din[0]*Dp,0,-din[1]*Dp],[0,0,0],[dirOut[0]*Dn,0,dirOut[1]*Dn]], dirOut};
+}
+
+/* ---------------- JS twins of the SDFs ---------------- */
+function sdSegJ(px,py,pz,a,b){
+  const bax=b[0]-a[0],bay=b[1]-a[1],baz=b[2]-a[2];
+  const pax=px-a[0],pay=py-a[1],paz=pz-a[2];
+  const h=Math.min(Math.max((pax*bax+pay*bay+paz*baz)/(bax*bax+bay*bay+baz*baz),0),1);
+  return Math.hypot(pax-bax*h,pay-bay*h,paz-baz*h);}
+function shapeSDJ(x,y,z,d){
+  const s=d.size;
+  const cx=Math.pow(Math.pow(Math.abs(x)+1e-5,d.px)+Math.pow(Math.abs(z)+1e-5,d.px),1/d.px);
+  const lp=Math.pow(Math.pow(cx,d.pv)+Math.pow(Math.abs(y/d.hy)+1e-5,d.pv),1/d.pv);
+  let sd=(lp-s)*Math.min(d.hy,1.0);
+  if(d.tw>0.001){
+    const dR=Math.hypot(Math.hypot(x,z)-s*0.72,y)-s*0.42;
+    sd=sd+(dR-sd)*d.tw;
+  }
+  if(d.aa>0.001){
+    const rr=Math.hypot(x,z);
+    const w=Math.min(Math.max(rr/(0.35*s),0),1);
+    sd-=s*d.aa*w*Math.cos(d.an*Math.atan2(z,x+1e-6));
+  }
+  return sd/(1.0+d.aa*(d.an+1.0)*2.9);
+}
+function localRoomSD(d,x,y,z){       /* room-local coordinates */
+  if(Math.abs(d.twist)>0.0005){
+    const ca=Math.cos(y*d.twist),sa=Math.sin(y*d.twist);
+    const nx=ca*x-sa*z, nz=sa*x+ca*z; x=nx; z=nz;
+  }
+  let sd=shapeSDJ(x,y,z,d);
+  if(d.ripA>0.001)
+    sd+=d.ripA*Math.sin(x*d.ripF)*Math.sin(y*d.ripF)*Math.sin(z*d.ripF);
+  return sd/(1.0+Math.abs(d.twist)*d.size*0.6+d.ripA*d.ripF);
+}
+let R={};
+function roomSDJ(px,py,pz,r){const c=R.pos[r];return localRoomSD(R.def[r],px-c[0],py-c[1],pz-c[2]);}
+function worldSDJ(px,py,pz){
+  let d=Math.min(roomSDJ(px,py,pz,0),Math.min(roomSDJ(px,py,pz,1),roomSDJ(px,py,pz,2)));
+  d=Math.min(d,sdSegJ(px,py,pz,R.pos[0],R.pos[1])-1.7);
+  d=Math.min(d,sdSegJ(px,py,pz,R.pos[1],R.pos[2])-1.7);
+  return d;}
+
+/* ------- the portal moon's orbit: shrunk until the whole sphere fits the room ------- */
+const doorCache=new Map();
+function doorParams(i,d){
+  const key=SEED+':'+i;
+  if(doorCache.has(key))return doorCache.get(key);
+  const ph=rng(i,301)*6.283;
+  const w=(0.07+rng(i,302)*0.06)*(rng(i,303)<0.5?-1:1);
+  const bob=Math.min(d.height*0.08,0.5), ph2=rng(i,304)*6.283;
+  const need=PR+0.35;
+  let A=0.55*d.size;
+  for(let g=0;g<16;g++){
+    let ok=true;
+    for(let a=0;a<24&&ok;a++){
+      const th=a*0.2618;
+      for(const yy of [-bob,0,bob]){
+        if(-localRoomSD(d,A*Math.cos(th),yy,A*Math.sin(th))<need){ok=false;break;}
+      }
+    }
+    if(ok)break;
+    A*=0.85;
+  }
+  if(i===0)A=Math.max(A,2*PR+0.8);   /* keep clear of the return sphere at the hall's centre */
+  const p={ph,w,bob,ph2,A};
+  doorCache.set(key,p);
+  return p;
+}
+function doorPos(i,d,c,t){
+  const p=doorParams(i,d), a=p.w*t+p.ph;
+  return [c[0]+p.A*Math.cos(a), c[1]+p.bob*Math.sin(0.7*t+p.ph2), c[2]+p.A*Math.sin(a)];
+}
+
+/* ------- state: where you are, and the way back ------- */
+let CI=0, dirIn=startDir();
+let stack=[];          /* [{seed, CI, dirIn}] — the worlds you came through */
+let camSkip=-1;        /* portal the camera is still passing out of */
+let camP=[0,0,0], yaw=0, pitch=0;
+
+function rebuildChain(){
+  R=chainOf(CI,dirIn);
+  const dCur=R.def[1], lk=lookOf(SEED);
+  $('worldV').textContent=lk.name;
+  $('lookV').textContent=STYLE_NAMES[lk.style];
+  $('depthV').textContent=stack.length;
+  $('pathV').textContent=stack.map(w=>lookOf(w.seed).name).concat([lk.name]).join(' › ');
+  $('roomV').textContent=dCur.name;
+  $('roomI').textContent='#'+CI+' · '+shapeName(dCur)
+    +' · p'+dCur.px.toFixed(1)+'/'+dCur.pv.toFixed(1)
+    +(dCur.tw>0.01?' · ring '+dCur.tw.toFixed(2):'');
+  $('note').textContent=[
+    'the walls are your camera; the moons are curved mirrors. the haloed sphere is not a moon — it is a hole into another brain.',
+    'dream stone: the walls are not you. the moons are this world\'s only suns, and they carry you as you were seconds ago. the sphere you came through still shows you live.',
+    'mirror hall: every wall reflects, and the moons carry you as you were seconds ago, recoloured by this world\'s light.'
+  ][lk.style];
+}
+function banner(a,b){
+  $('bn1').textContent=a;$('bn2').textContent=b||'';
+  const el=$('banner');el.classList.add('show');
+  clearTimeout(banner.t);banner.t=setTimeout(()=>el.classList.remove('show'),2600);
+}
+function advance(){
+  const shift=R.pos[2];
+  camP=[camP[0]-shift[0],camP[1]-shift[1],camP[2]-shift[2]];
+  dirIn=R.dirOut; CI++; rebuildChain();
+}
+function retreat(){
+  const shift=R.pos[0];
+  camP=[camP[0]-shift[0],camP[1]-shift[1],camP[2]-shift[2]];
+  const dPrev=roomDef(CI-1);
+  dirIn=rotXZ(dirIn,-dPrev.turn); CI--; rebuildChain();
+}
+
+/* ---------------- crossing, for the camera (the ray does the same in the shader) -------- */
+let portJ={door:null,ret:null};
+function enterDoor(c){
+  const off=[camP[0]-c[0],camP[1]-c[1],camP[2]-c[2]];
+  stack.push({seed:SEED,CI,dirIn:dirIn.slice()});
+  SEED=childSeed(SEED,CI); CI=0; dirIn=startDir();
+  rebuildChain();
+  camP=off;                 /* the return sphere sits at the arrival hall's centre = origin */
+  camSkip=1;
+  const lk=lookOf(SEED);
+  banner(lk.name,STYLE_NAMES[lk.style]+' · '+stack.length+' world'+(stack.length===1?'':'s')+' deep · turn around to see home');
+}
+function enterReturn(c){
+  const off=[camP[0]-c[0],camP[1]-c[1],camP[2]-c[2]];
+  const par=stack.pop();
+  SEED=par.seed; CI=par.CI; dirIn=par.dirIn;
+  rebuildChain();
+  const dp=doorPos(R.idx[1],R.def[1],R.pos[1],simT);
+  camP=[dp[0]+off[0],dp[1]+off[1],dp[2]+off[2]];
+  camSkip=0;
+  const lk=lookOf(SEED);
+  banner(lk.name,'back · '+stack.length+' world'+(stack.length===1?'':'s')+' deep');
+}
+function checkPortals(){
+  const list=[[0,portJ.door]];
+  if(portJ.ret)list.push([1,portJ.ret]);
+  for(const [idx,c] of list){
+    const d=Math.hypot(camP[0]-c[0],camP[1]-c[1],camP[2]-c[2]);
+    if(idx===camSkip){ if(d>PR+0.35)camSkip=-1; continue; }
+    if(d<PR){ if(idx===0)enterDoor(c); else enterReturn(c); return true; }
+  }
+  if(camSkip===1&&!portJ.ret)camSkip=-1;
+  return false;
+}
+
+/* ---------------- pack all three worlds for the shader ---------------- */
+let P={mGain:1.0,lensK:1.0}, idle=1;
+const wellsF=new Float32Array(MAXW*4), colsF=new Float32Array(MAXW*3), parF=new Float32Array(MAXW*4);
+const roomPosF=new Float32Array(27), roomParF=new Float32Array(36),
+      roomModF=new Float32Array(36), roomShpF=new Float32Array(36), roomTintF=new Float32Array(27);
+const slotWF=new Int32Array(6), slotPalF=new Float32Array(12), slotFogF=new Float32Array(12);
+const slotLayerF=new Float32Array(3);
+const pCF=new Float32Array(16), pXF=new Float32Array(16), pIF=new Float32Array(16);
+function moonCol(h){
+  return[0.55+0.45*Math.cos(6.283*h),0.55+0.45*Math.cos(6.283*(h+0.33)),0.55+0.45*Math.cos(6.283*(h+0.66))];}
+
+function fillSlot(s,seed,ch,t,rooms,cap,w,depth){
+  const lk=lookOf(seed);
+  slotLayerF[s]=layerFor(depth);
+  slotPalF.set([lk.hue,lk.rec,lk.fq,lk.style],s*4);
+  slotFogF.set([lk.fog[0],lk.fog[1],lk.fog[2],lk.dens],s*4);
+  const start=w;
+  withSeed(seed,()=>{
+    for(let r=0;r<3;r++){
+      const d=ch.def[r],c=ch.pos[r],b=s*3+r;
+      roomPosF.set(c,b*3);
+      roomParF.set([d.size,d.px,d.pv,d.hy],b*4);
+      roomModF.set([d.twist,d.ripA,d.ripF,d.massK],b*4);
+      roomShpF.set([d.aa,d.an,d.tw,0],b*4);
+      roomTintF.set(d.tint,b*3);
+    }
+    for(const r of rooms){
+      const d=ch.def[r],c=ch.pos[r],b=s*3+r;
+      const A=d.size*0.62, Ay=d.height*0.55;
+      const nM=Math.min(nMoonsOf(d.level),cap);
+      for(let m=0;m<nM&&w<MAXW;m++,w++){
+        const md=moonDef(ch.idx[r],m);
+        const size=Math.min((0.45+(md.mass/3.0)*0.75)*P.mGain*d.massK,1.6);
+        wellsF[w*4+0]=c[0]+A*md.ax*Math.sin(md.fx*t+md.px);
+        wellsF[w*4+1]=c[1]+Ay*md.ay*Math.sin(md.fy*t+md.py);
+        wellsF[w*4+2]=c[2]+A*md.az*Math.sin(md.fz*t+md.pz);
+        wellsF[w*4+3]=size;
+        colsF.set(moonCol(md.hue),w*3);
+        parF.set([md.ra*t+md.pa,md.rb*t+md.pb,b,0],w*4);
+      }
+    }
+  });
+  slotWF[s*2]=start; slotWF[s*2+1]=w;
+  return w;
+}
+function setPortal(j,c,ex,from,to,pair,hue){
+  pCF.set([c[0],c[1],c[2],PR],j*4);
+  pXF.set([ex[0],ex[1],ex[2],hue],j*4);
+  pIF.set([from,to,pair,1],j*4);
+}
+function offPortal(j){pIF.set([-1,-1,-1,0],j*4);}
+
+function packWorld(t){
+  let w=0;
+  w=fillSlot(0,SEED,R,t,[0,1,2],4,w,stack.length);
+  /* slot 1: the brain behind this room's portal, around its arrival hall */
+  const cs=childSeed(SEED,CI);
+  const C1=withSeed(cs,()=>chainOf(0,startDir()));
+  w=fillSlot(1,cs,C1,t,[1],4,w,stack.length+1);
+  const dPos=doorPos(R.idx[1],R.def[1],R.pos[1],t);
+  setPortal(0,dPos,[0,0,0],0,1,2,lookOf(cs).fogHue);       /* door  : here -> there */
+  setPortal(2,[0,0,0],dPos,1,0,0,lookOf(SEED).fogHue);     /* return: there -> here */
+  portJ.door=dPos; portJ.ret=null;
+  /* slot 2: where you came from — only while the arrival hall is in view */
+  const j0=R.idx.indexOf(0);
+  if(stack.length&&j0>=0){
+    const par=stack[stack.length-1];
+    const Cp=withSeed(par.seed,()=>chainOf(par.CI,par.dirIn));
+    w=fillSlot(2,par.seed,Cp,t,[1],4,w,stack.length-1);
+    const pd=withSeed(par.seed,()=>doorPos(par.CI,Cp.def[1],Cp.pos[1],t));
+    const rp=R.pos[j0];
+    setPortal(1,rp,pd,0,2,3,lookOf(par.seed).fogHue);
+    setPortal(3,pd,rp,2,0,1,lookOf(SEED).fogHue);
+    portJ.ret=rp;
+    $('backV').textContent=lookOf(par.seed).name+' · '+Math.hypot(camP[0]-rp[0],camP[1]-rp[1],camP[2]-rp[2]).toFixed(0)+' m';
+  }else{
+    offPortal(1); offPortal(3);
+    slotWF[4]=w; slotWF[5]=w;
+    slotPalF.set(slotPalF.subarray(4,8),8); slotFogF.set(slotFogF.subarray(4,8),8); slotLayerF[2]=slotLayerF[1];
+    $('backV').textContent=stack.length?'in the arrival hall (#0)':'— you are home';
+  }
+  $('timeV').textContent=stack.length?'you, '+secondsFor(stack.length).toFixed(1)+' s ago':'you, live';
+  $('doorV').textContent=lookOf(cs).name+' · '+STYLE_NAMES[lookOf(cs).style]+' · '
+    +Math.hypot(camP[0]-dPos[0],camP[1]-dPos[1],camP[2]-dPos[2]).toFixed(0)+' m';
+  return w;
+}
+
+/* ---------------- camera & input (mouse INVERTED, as in Descent) ------------ */
+function faceForwardGate(){yaw=Math.atan2(R.dirOut[0],R.dirOut[1]);pitch=0;}
+rebuildChain();faceForwardGate();
+const keys={};
+addEventListener('keydown',e=>{keys[e.code]=1;
+  if(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE'].includes(e.code))e.preventDefault();});
+addEventListener('keyup',e=>{keys[e.code]=0;});
+let dragging=false,lx=0,ly=0;
+cvs.addEventListener('pointerdown',e=>{dragging=true;lx=e.clientX;ly=e.clientY;
+  cvs.classList.add('drag');cvs.setPointerCapture(e.pointerId);
+  boot.classList.add('gone');startMusic();});
+cvs.addEventListener('pointerup',()=>{dragging=false;cvs.classList.remove('drag');});
+cvs.addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  yaw+=(e.clientX-lx)*0.0032;pitch-=(e.clientY-ly)*0.0032;
+  pitch=Math.max(-1.5,Math.min(1.5,pitch));
+  lx=e.clientX;ly=e.clientY;
+});
+boot.addEventListener('click',()=>{boot.classList.add('gone');startMusic();});
+
+function insideVal(px,py,pz){return -worldSDJ(px,py,pz);}
+function tryMove(nx,ny,nz){
+  if(insideVal(nx,ny,nz)>0.35){camP=[nx,ny,nz];return;}
+  if(insideVal(nx,camP[1],camP[2])>0.35)camP[0]=nx;
+  if(insideVal(camP[0],ny,camP[2])>0.35)camP[1]=ny;
+  if(insideVal(camP[0],camP[1],nz)>0.35)camP[2]=nz;
+}
+function unstick(){           /* arrived inside a wall? drift toward the room's heart */
+  for(let g=0;g<60&&insideVal(camP[0],camP[1],camP[2])<0.35;g++){
+    const c=R.pos[1];
+    camP=[camP[0]+(c[0]-camP[0])*0.08,camP[1]+(c[1]-camP[1])*0.08,camP[2]+(c[2]-camP[2])*0.08];
+  }
+}
+
+/* ---------------- music: game1..10.mp3 next to this file ---------- */
+const TRACKS=['game1.mp3','game2.mp3','game3.mp3','game4.mp3','game5.mp3',
+              'game6.mp3','game7.mp3','game8.mp3','game9.mp3','game10.mp3'];
+let musicOn=true, musicStarted=false, mIdx=Math.floor(Math.random()*TRACKS.length), mFails=0;
+const audio=(typeof Audio!=='undefined')?new Audio():null;
+if(audio){
+  audio.preload='auto'; audio.volume=0.5;
+  audio.addEventListener('ended',()=>{mFails=0;playTrack(mIdx+1);});
+  audio.addEventListener('error',()=>{
+    if(++mFails<TRACKS.length)playTrack(mIdx+1);
+    else $('musV').textContent='no mp3s found';
+  });
+  audio.addEventListener('playing',()=>{mFails=0;$('musV').textContent=TRACKS[mIdx];});
+}
+function playTrack(i){
+  if(!audio||!musicOn)return;
+  mIdx=((i%TRACKS.length)+TRACKS.length)%TRACKS.length;
+  audio.src=TRACKS[mIdx];
+  audio.play().catch(()=>{});
+}
+function startMusic(){
+  if(musicStarted||!musicOn||!audio)return;
+  musicStarted=true; playTrack(mIdx);
+}
+$('bMus').onclick=e=>{
+  musicOn=!musicOn;
+  e.target.classList.toggle('on',musicOn);
+  e.target.textContent='Music: '+(musicOn?'on':'off');
+  if(!audio)return;
+  if(musicOn){musicStarted=false;startMusic();}
+  else {audio.pause();$('musV').textContent='off';}
+};
+$('musV').textContent='starts on first click';
+
+/* ---------------- controls ---------------- */
+function bind(id,lab,fn){const el=$(id);el.addEventListener('input',()=>{fn(parseFloat(el.value));$(lab).textContent=el.value;});}
+bind('m','m_l',v=>{P.mGain=v;});
+bind('g','g_l',v=>{P.lensK=v;});
+bind('v','v_l',v=>{if(audio)audio.volume=v;});
+$('bSrc').onclick=()=>{useCam=!useCam;setSrcLabel();};
+$('bHome').onclick=()=>{
+  if(!stack.length){$('stat').textContent='already home';return;}
+  const h=stack[0]; stack=[];
+  SEED=h.seed; CI=h.CI; dirIn=h.dirIn; camP=[0,0,0]; camSkip=-1;
+  rebuildChain(); faceForwardGate();
+  banner('HOME','the whole way back in one step');
+};
+$('bSeed').onclick=()=>{
+  ROOT=(Math.random()*4294967296)>>>0; SEED=ROOT;
+  lookCache.clear(); doorCache.clear();
+  stack=[]; CI=0; dirIn=startDir(); camP=[0,0,0]; camSkip=-1;
+  rebuildChain(); faceForwardGate();
+  banner('HOME','a new multiverse · seed '+ROOT.toString(16));
+  $('stat').textContent='new multiverse · seed '+ROOT.toString(16);
+};
+$('bIdle').onclick=e=>{idle^=1;e.target.classList.toggle('on',!!idle);
+  e.target.textContent='Idle spin: '+(idle?'on':'off');};
+if(matchMedia('(prefers-reduced-motion: reduce)').matches){
+  idle=0;$('bIdle').classList.remove('on');$('bIdle').textContent='Idle spin: off';
+}
+
+function resize(){
+  const dpr=Math.min(devicePixelRatio||1,1.35);
+  cvs.width=Math.floor(innerWidth*dpr);
+  cvs.height=Math.floor(innerHeight*dpr);
+  gl.viewport(0,0,cvs.width,cvs.height);
+}
+addEventListener('resize',resize);resize();
+
+/* ---------------- shader compile ---------------- */
+let prog=null,U={};
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);
+  gl.compileShader(s);return s;}
+function compileAndStart(){
+  const vs=sh(gl.VERTEX_SHADER,VERT), fs=sh(gl.FRAGMENT_SHADER,FRAG);
+  prog=gl.createProgram();
+  gl.attachShader(prog,vs);gl.attachShader(prog,fs);
+  gl.linkProgram(prog);
+  const ext=gl.getExtension('KHR_parallel_shader_compile');
+  function finish(){
+    if(window.dreamTick){clearInterval(window.dreamTick);window.dreamTick=null;}
+    if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){
+      const log=(gl.getShaderInfoLog(fs)||'')+' '+(gl.getShaderInfoLog(vs)||'')
+               +' '+(gl.getProgramInfoLog(prog)||'');
+      bootErr('Shader failed: '+log.trim());
+      return;
+    }
+    gl.useProgram(prog);
+    ['iRes','iTime','camP','camR','camU','camF','marchN','escN','camSkip','mGain','lensK','camTex',
+     'wells','wellCol','wellPar','slotW','slotPal','slotFog',
+     'roomPos','roomPar','roomMod','roomShp','roomTintU','pC','pX','pI','camArr','slotLayer']
+     .forEach(k=>U[k]=gl.getUniformLocation(prog,k));
+    gl.uniform1i(U.camTex,0);
+    gl.uniform1i(U.camArr,1);
+    gl.uniform1i(U.marchN,220);
+    gl.uniform1i(U.escN,10);
+    $('bootStat').textContent='ready — click to enter';
+    window.brainReady=true;
+    requestAnimationFrame(loop);
+  }
+  if(ext){
+    (function poll(){
+      if(gl.getProgramParameter(prog,ext.COMPLETION_STATUS_KHR))finish();
+      else requestAnimationFrame(poll);
+    })();
+  }else finish();
+}
+
+/* ---------------- loop ---------------- */
+let t0=performance.now(),simT=0,frames=0,fpsT=t0;
+function step(dt){
+  if(idle)simT+=dt; else simT+=dt*0.06;
+  const cp=Math.cos(pitch),sp=Math.sin(pitch),cy=Math.cos(yaw),sy=Math.sin(yaw);
+  const F=[sy*cp,sp,cy*cp], Rv=[cy,0,-sy], Uv=[-sy*sp,cp,-cy*sp];
+  const spd=(keys.ShiftLeft||keys.ShiftRight?14:6)*dt;
+  let mx=0,my=0,mz=0;
+  if(keys.KeyW){mx+=F[0]*spd;my+=F[1]*spd;mz+=F[2]*spd;}
+  if(keys.KeyS){mx-=F[0]*spd;my-=F[1]*spd;mz-=F[2]*spd;}
+  if(keys.KeyD){mx+=Rv[0]*spd;mz+=Rv[2]*spd;}
+  if(keys.KeyA){mx-=Rv[0]*spd;mz-=Rv[2]*spd;}
+  if(keys.KeyE)my+=spd;
+  if(keys.KeyQ)my-=spd;
+  if(mx||my||mz)tryMove(camP[0]+mx,camP[1]+my,camP[2]+mz);
+
+  if(roomSDJ(camP[0],camP[1],camP[2],2)<-1.0)advance();
+  else if(roomSDJ(camP[0],camP[1],camP[2],0)<-1.0)retreat();
+
+  let nW=packWorld(simT);
+  if(checkPortals()){ unstick(); nW=packWorld(simT); }
+  return {F,Rv,Uv};
+}
+function draw(cam){
+  gl.useProgram(prog);
+  gl.uniform2f(U.iRes,cvs.width,cvs.height);
+  gl.uniform1f(U.iTime,simT);
+  gl.uniform3f(U.camP,camP[0],camP[1],camP[2]);
+  gl.uniform3f(U.camR,cam.Rv[0],cam.Rv[1],cam.Rv[2]);
+  gl.uniform3f(U.camU,cam.Uv[0],cam.Uv[1],cam.Uv[2]);
+  gl.uniform3f(U.camF,cam.F[0],cam.F[1],cam.F[2]);
+  gl.uniform1i(U.camSkip,camSkip);
+  gl.uniform1f(U.mGain,P.mGain);
+  gl.uniform1f(U.lensK,P.lensK);
+  gl.uniform4fv(U.wells,wellsF);
+  gl.uniform3fv(U.wellCol,colsF);
+  gl.uniform4fv(U.wellPar,parF);
+  gl.uniform2iv(U.slotW,slotWF);
+  gl.uniform4fv(U.slotPal,slotPalF);
+  gl.uniform4fv(U.slotFog,slotFogF);
+  gl.uniform3fv(U.roomPos,roomPosF);
+  gl.uniform4fv(U.roomPar,roomParF);
+  gl.uniform4fv(U.roomMod,roomModF);
+  gl.uniform4fv(U.roomShp,roomShpF);
+  gl.uniform3fv(U.roomTintU,roomTintF);
+  gl.uniform4fv(U.pC,pCF);
+  gl.uniform4fv(U.pX,pXF);
+  gl.uniform4fv(U.pI,pIF);
+  gl.uniform1fv(U.slotLayer,slotLayerF);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
+let paused=false;
+function loop(now){
+  if(paused){requestAnimationFrame(loop);return;}
+  const dt=Math.min((now-t0)/1000,0.05);t0=now;
+  uploadBoundary(simT,dt);
+  const cam=step(dt);
+  draw(cam);
+  frames++;
+  if(now-fpsT>400){
+    $('fps').textContent=Math.round(frames*1000/(now-fpsT))+' fps';
+    frames=0;fpsT=now;
+    $('pos').textContent=camP.map(v=>v.toFixed(1)).join(', ');
+  }
+  requestAnimationFrame(loop);
+}
+/* test hooks: lets a script stand somewhere and look */
+window.brain={
+  get state(){return {SEED,ROOT,CI,camP:camP.slice(),camSkip,depth:stack.length,door:portJ.door,ret:portJ.ret,world:lookOf(SEED)};},
+  place(p,y,pi){camP=p.slice();if(y!==undefined)yaw=y;if(pi!==undefined)pitch=pi;},
+  frame(dt){uploadBoundary(simT,dt||0.016);const c=step(dt||0.016);draw(c);},
+  setIdle(v){idle=v;},
+  pause(v){paused=v;},
+  setRoot(r){ROOT=r>>>0;SEED=ROOT;lookCache.clear();doorCache.clear();stack=[];CI=0;dirIn=startDir();camP=[0,0,0];camSkip=-1;rebuildChain();},
+  childLook(){return lookOf(childSeed(SEED,CI));},
+  png(){return cvs.toDataURL('image/png');},
+  inside(p){return insideVal(p[0],p[1],p[2]);},
+  lookAt(q){const d=[q[0]-camP[0],q[1]-camP[1],q[2]-camP[2]];yaw=Math.atan2(d[0],d[2]);pitch=Math.atan2(d[1],Math.hypot(d[0],d[2]));}
+};
+
+const dreamT0=performance.now();
+window.dreamTick=setInterval(()=>{
+  const s=((performance.now()-dreamT0)/1000)|0;
+  $('bootStat').textContent='dreaming the shader… '+s+'s (first launch only — cached after)';
+},500);
+$('bootStat').textContent='dreaming the shader… (first launch only — cached after)';
+requestAnimationFrame(()=>{try{compileAndStart();}catch(e){bootErr(e&&e.stack||e);}});
+</script>
